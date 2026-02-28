@@ -8,14 +8,12 @@ from catholic_mass_readings import USCCB, models
 
 
 def _safe_ref(reading):
-    """Get a scripture reference string from a Reading's verses."""
     if not reading.verses:
         return ""
     return ", ".join(v.text for v in reading.verses if v.text)
 
 
 async def _get_readings(date: datetime.date):
-    """Fetch readings for a date, trying standard mass types in order."""
     async with USCCB() as usccb:
         mass = await usccb.get_mass_from_date(
             date,
@@ -34,7 +32,6 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            # Parse ?date=YYYYMMDD from query string
             qs = parse_qs(urlparse(self.path).query)
             date_str = qs.get("date", [None])[0]
 
@@ -45,7 +42,7 @@ class handler(BaseHTTPRequestHandler):
             try:
                 date = datetime.datetime.strptime(date_str, "%Y%m%d").date()
             except ValueError:
-                self._respond(400, {"error": f"invalid date format: {date_str}, expected YYYYMMDD"})
+                self._respond(400, {"error": f"invalid date: {date_str}"})
                 return
 
             mass = asyncio.run(_get_readings(date))
@@ -54,26 +51,23 @@ class handler(BaseHTTPRequestHandler):
                 self._respond(404, {"error": f"no readings found for {date.isoformat()}"})
                 return
 
-            # Build a compact response — just what MassFinder needs:
-            # title (liturgical day name) + section headings + scripture refs
             sections = []
             for section in mass.sections:
-                # Skip Alleluia/Sequence — not useful to display as a reading row
                 if section.type_ in (
                     models.SectionType.ALLELUIA,
                     models.SectionType.SEQUENCE,
                 ):
                     continue
 
-                # Use the first (canonical) reading's reference
-                if section.readings:
-                    ref = _safe_ref(section.readings[0])
-                else:
-                    ref = ""
+                if not section.readings:
+                    continue
 
+                # Primary reading (first); include ref + full text
+                primary = section.readings[0]
                 sections.append({
                     "heading": section.display_header,
-                    "ref": ref,
+                    "ref": _safe_ref(primary),
+                    "text": primary.text.strip() if primary.text else "",
                 })
 
             payload = {
@@ -98,4 +92,4 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, format, *args):
-        pass  # suppress default access logs
+        pass
