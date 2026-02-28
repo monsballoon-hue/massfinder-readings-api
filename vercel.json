@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "api/readings.py": {
+      "runtime": "python3.12",
+      "maxDuration": 15
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/readings",
+      "dest": "/api/readings.py"
+    }
+  ]
+}
