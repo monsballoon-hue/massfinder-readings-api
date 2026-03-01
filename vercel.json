@@ -1,7 +1,6 @@
 {
-  "functions": {
-    "api/readings.py": {
-      "maxDuration": 15
-    }
-  }
+  "rewrites": [
+    { "source": "/api/readings", "destination": "/api/readings.py" },
+    { "source": "/api/saint", "destination": "/api/saint.py" }
+  ]
 }
